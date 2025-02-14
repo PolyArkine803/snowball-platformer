@@ -8,12 +8,12 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public float speed;
-    public float jumpspeed;
+    public float speed = 7;
+    public float jumpspeed = 17;
     private float direction;
     private Rigidbody2D player;
-    public float scale;
-    private float groundCheckRadius = .5f;
+    private GameObject Player;
+    public float scale = 1;
     private bool canDash;
     private bool isDashing;
     [SerializeField] private float dashingPower;
@@ -23,9 +23,9 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField] private Transform groundCheck;
     [SerializeField] private LayerMask groundLayer;
-
-
-
+    
+    private float snow;
+    private bool isrolling;
 
 
     public GameObject dash;
@@ -33,26 +33,31 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         player = GetComponent<Rigidbody2D>();
+        
     }
 
     // Update is called once per frame
     void Update()
     {
-        RaycastHit2D ray = Physics2D.Raycast(transform.position, Vector3.down, 5);
+        int layermask = 1 << ~3;
+        RaycastHit2D ray = Physics2D.Raycast(transform.position, Vector3.down, .5f);
         Debug.DrawRay(transform.position, Vector3.down, Color.green);
-        if (ray)
+        if (ray == true)
         {
+            
             Debug.Log("Somethine was hit");
+            Debug.Log(ray.distance);
             isGrounded = true;
         }
+
         float originalgravity = player.gravityScale;
         if (player.linearVelocity.y < -1)
         {
-            player.gravityScale = originalgravity + .01f;
+            player.gravityScale = originalgravity + .05f;
         }
         else if (player.linearVelocity.y >= 0)
         {
-            player.gravityScale = 1.5f;
+            player.gravityScale = 3.5f;
         }
         if (isDashing)
         {
@@ -60,28 +65,47 @@ public class PlayerController : MonoBehaviour
         }
        
         direction = Input.GetAxis("Horizontal");
-        if (direction > 0f)
+        if (isGrounded)
         {
+            StartCoroutine(Roll());
+            if (direction > 0f)
+            {
             player.linearVelocity = new Vector2(direction + speed, player.linearVelocity.y);
-        }
-        else if (direction < 0f)
-        {
+            }
+            else if (direction < 0f)
+            {
             player.linearVelocity = new Vector2(direction - speed, player.linearVelocity.y);
+            }
         }
-
-        if (Input.GetButtonDown("Jump"))
-          if (isGrounded == true)
+        if (Input.GetButtonDown("Jump") && isGrounded)
             {
             Debug.Log("Jumped");
             player.linearVelocity = new Vector2(player.linearVelocity.x, jumpspeed);
+            isGrounded = false;
             }
-
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
             StartCoroutine(Dash());
         }
 
     }
+
+   private IEnumerator Roll() 
+   {
+    while (direction > .1f || direction < -.1f)
+    {
+        if (scale < 2.5)
+        {
+            snow += .01f;
+            yield return new WaitForSeconds(1f);
+            player.gravityScale += snow;
+            scale += snow; 
+            speed += snow;
+            jumpspeed += snow;
+            player.gravityScale += snow;
+        }
+    }
+   }
 
     private IEnumerator Dash()
     {
@@ -92,7 +116,7 @@ public class PlayerController : MonoBehaviour
         player.linearVelocity = new Vector2(transform.localScale.x * dashingPower, 0f);
         GameObject dash_anim;
         dash_anim = Instantiate(dash, transform.position, Quaternion.identity);
-        dash_anim.transform.localScale = new Vector2(player.transform.localScale.x / 2, player.transform.localScale.y / 2);
+        dash_anim.transform.localScale = new Vector2(player.transform.localScale.x / 2, Player.transform.localScale.y / 2);
         dash_anim.transform.position = new Vector2(dash_anim.transform.localPosition.x, dash_anim.transform.localPosition.y + 4);
         yield return new WaitForSeconds(dashingTime);
         Destroy(dash_anim);
