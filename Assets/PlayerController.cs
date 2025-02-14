@@ -12,8 +12,8 @@ public class PlayerController : MonoBehaviour
     public float jumpspeed = 17;
     private float direction;
     private Rigidbody2D player;
-    private GameObject Player;
-    public float scale = 1;
+    [SerializeField] public Transform Player;
+    public float scale = 1f;
     private bool canDash;
     private bool isDashing;
     [SerializeField] private float dashingPower;
@@ -24,10 +24,37 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Transform groundCheck;
     [SerializeField] private LayerMask groundLayer;
     
-    private float snow;
+    private float snow = 1;
     private bool isrolling;
 
+    private IEnumerator Roll() 
+    {
+                    snow += .01f;
+                    player.gravityScale += snow;
+                    scale += snow; 
+                    speed += snow;
+                    jumpspeed += snow;
+                    player.gravityScale += snow;
+                    yield return new WaitForSeconds(.3f); 
+                    if (scale < 2.5f)
+                    {
+                     StopCoroutine(Roll());  
+                    }
+    }
 
+    private IEnumerator Dash()
+    {
+        canDash = false;
+        isDashing = true;
+        float originalgravity = player.gravityScale;
+        player.gravityScale = 0;
+        player.linearVelocity = new Vector2(transform.localScale.x * dashingPower, 0f);
+        yield return new WaitForSeconds(dashingTime);
+        player.gravityScale = originalgravity;
+        isDashing = false;
+        yield return new WaitForSeconds(dashingCooldown);
+        canDash = true;
+    }
     public GameObject dash;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -39,8 +66,29 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+          if (Input.GetButtonDown("Jump"))
+            {
+            Debug.Log("Jumped");
+            player.linearVelocity = new Vector2(player.linearVelocity.x, jumpspeed);
+            isGrounded = false;
+            }
+        if (Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            StartCoroutine(Dash());
+        }
+        
+        if (player.linearVelocity.x > .2f || player.linearVelocity.x < -.2f)
+        {
+            if (scale < 2.5f)
+            {
+                StartCoroutine(Roll());
+                Debug.Log(player.linearVelocity.x);
+            }
+        }    
+
+
         int layermask = 1 << ~3;
-        RaycastHit2D ray = Physics2D.Raycast(transform.position, Vector3.down, .5f);
+        RaycastHit2D ray = Physics2D.Raycast(transform.position, Vector3.down, (1f+ snow)/2);
         Debug.DrawRay(transform.position, Vector3.down, Color.green);
         if (ray == true)
         {
@@ -67,62 +115,16 @@ public class PlayerController : MonoBehaviour
         direction = Input.GetAxis("Horizontal");
         if (isGrounded)
         {
-            StartCoroutine(Roll());
             if (direction > 0f)
             {
             player.linearVelocity = new Vector2(direction + speed, player.linearVelocity.y);
+            Player.transform.localScale = new Vector2(scale, scale);
             }
             else if (direction < 0f)
             {
             player.linearVelocity = new Vector2(direction - speed, player.linearVelocity.y);
+            Player.transform.localScale = new Vector2(scale, scale);
             }
         }
-        if (Input.GetButtonDown("Jump") && isGrounded)
-            {
-            Debug.Log("Jumped");
-            player.linearVelocity = new Vector2(player.linearVelocity.x, jumpspeed);
-            isGrounded = false;
-            }
-        if (Input.GetKeyDown(KeyCode.LeftShift))
-        {
-            StartCoroutine(Dash());
-        }
-
-    }
-
-   private IEnumerator Roll() 
-   {
-    while (direction > .1f || direction < -.1f)
-    {
-        if (scale < 2.5)
-        {
-            snow += .01f;
-            yield return new WaitForSeconds(1f);
-            player.gravityScale += snow;
-            scale += snow; 
-            speed += snow;
-            jumpspeed += snow;
-            player.gravityScale += snow;
-        }
-    }
-   }
-
-    private IEnumerator Dash()
-    {
-        canDash = false;
-        isDashing = true;
-        float originalgravity = player.gravityScale;
-        player.gravityScale = 0;
-        player.linearVelocity = new Vector2(transform.localScale.x * dashingPower, 0f);
-        GameObject dash_anim;
-        dash_anim = Instantiate(dash, transform.position, Quaternion.identity);
-        dash_anim.transform.localScale = new Vector2(player.transform.localScale.x / 2, Player.transform.localScale.y / 2);
-        dash_anim.transform.position = new Vector2(dash_anim.transform.localPosition.x, dash_anim.transform.localPosition.y + 4);
-        yield return new WaitForSeconds(dashingTime);
-        Destroy(dash_anim);
-        player.gravityScale = originalgravity;
-        isDashing = false;
-        yield return new WaitForSeconds(dashingCooldown);
-        canDash = true;
-    }
+    }      
 }
